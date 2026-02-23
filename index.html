@@ -1,202 +1,196 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>IBAN Shield - Demo Verifica</title>
-  <style>
-    body{
-      font-family: Arial, sans-serif;
-      background:#111827;
-      color:#fff;
-      margin:0;
-      height:100vh;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-    }
-    .wrap{
-      width:100%;
-      max-width:980px;
-      padding:24px;
-      display:flex;
-      gap:24px;
-      align-items:center;
-      justify-content:center;
-      flex-wrap:wrap;
-    }
-    .hero{
-      flex:1 1 320px;
-      min-width:280px;
-      padding:12px 8px;
-    }
-    .brand{
-      font-size:48px;
-      font-weight:800;
-      letter-spacing:0.5px;
-      margin:0 0 10px 0;
-    }
-    .subtitle{
-      font-size:16px;
-      line-height:1.45;
-      opacity:0.9;
-      margin:0;
-      max-width:520px;
-    }
-    .card{
-      flex:0 1 420px;
-      width:420px;
-      background:#f3f4f6;
-      border-radius:14px;
-      padding:20px 18px 14px 18px;
-      box-shadow:0 18px 45px rgba(0,0,0,.35);
-      color:#111;
-    }
-    .card h2{
-      text-align:center;
-      margin:6px 0 14px 0;
-      font-size:34px;
-      font-weight:800;
-      color:#111;
-    }
-    input{
-      width:100%;
-      padding:14px 12px;
-      margin:8px 0;
-      border-radius:10px;
-      border:1px solid #d1d5db;
-      font-size:16px;
-      outline:none;
-      background:#fff;
-      box-sizing:border-box;
-    }
-    input:focus{
-      border-color:#60a5fa;
-      box-shadow:0 0 0 3px rgba(96,165,250,.25);
-    }
-    button{
-      width:100%;
-      padding:14px 12px;
-      background:#2563eb;
-      color:white;
-      border:none;
-      border-radius:10px;
-      font-size:18px;
-      cursor:pointer;
-      margin-top:10px;
-      font-weight:700;
-    }
-    button:hover{ background:#1d4ed8; }
-    .result{
-      margin-top:14px;
-      padding:12px;
-      border-radius:10px;
-      font-weight:700;
-      font-size:16px;
-    }
-    .success{ background:#d1fae5; color:#065f46; }
-    .warning{ background:#fef3c7; color:#92400e; }
-    .danger{ background:#fee2e2; color:#991b1b; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IBAN Shield - Demo Verifica</title>
 
-    .footerNote{
-      margin-top:10px;
-      font-size:12.5px;
-      opacity:.85;
-      color:#374151;
-      line-height:1.35;
-      text-align:center;
-    }
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-    .microNote{
-      margin-top:12px;
-      font-size:12px;
-      color:#9ca3af;
-      text-align:center;
-    }
-  </style>
+<style>
+body {
+    margin:0;
+    font-family: Arial, sans-serif;
+    background:#1f2937;
+    color:white;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+}
+
+.container {
+    width:420px;
+    background:white;
+    color:#111827;
+    padding:30px;
+    border-radius:18px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.4);
+}
+
+.logo {
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin-bottom:20px;
+}
+
+.logo img {
+    width:45px;
+}
+
+.logo h1 {
+    margin:0;
+    font-size:22px;
+}
+
+input {
+    width:100%;
+    padding:12px;
+    margin-bottom:12px;
+    border-radius:8px;
+    border:1px solid #d1d5db;
+}
+
+button {
+    width:100%;
+    padding:12px;
+    border:none;
+    border-radius:8px;
+    background:#2563eb;
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+    margin-top:5px;
+}
+
+button:hover {
+    background:#1e40af;
+}
+
+.result {
+    margin-top:15px;
+    padding:12px;
+    border-radius:8px;
+    font-size:14px;
+}
+
+.success {
+    background:#d1fae5;
+    color:#065f46;
+}
+
+.warning {
+    background:#fef3c7;
+    color:#92400e;
+}
+
+.error {
+    background:#fee2e2;
+    color:#991b1b;
+}
+
+.score {
+    margin-top:8px;
+    font-weight:bold;
+}
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="hero">
-      <h1 class="brand">IBAN Shield</h1>
-      <p class="subtitle">
-        Verifica preventiva <b>IBAN + intestatario</b> prima del bonifico.
-        Strumento di prevenzione frodi per <b>marketplace</b> e pagamenti ad alto importo.
-      </p>
+
+<div class="container">
+    <div class="logo">
+        <img src="logo.png">
+        <h1>IBAN Shield</h1>
     </div>
 
-    <div class="card">
-      <h2>Demo Verifica</h2>
+    <input id="iban" placeholder="Inserisci IBAN">
+    <input id="nome" placeholder="Nome intestatario">
+    <input id="importo" type="number" placeholder="Importo (€)">
+    <button onclick="verifica()">Verifica Transazione</button>
 
-      <input id="iban" placeholder="Inserisci IBAN" />
-      <input id="name" placeholder="Nome intestatario" />
-      <input id="amount" type="number" placeholder="Importo (€)" />
+    <div id="risultato"></div>
+    <button id="pdfBtn" style="display:none;" onclick="generaPDF()">📄 Genera Certificato</button>
+</div>
 
-      <button onclick="verify()">Verifica Transazione</button>
+<script>
 
-      <div id="result" class="result" style="display:none;"></div>
+const validIBAN = "IT60X0542811101000000123456";
+const validName = "mario rossi";
 
-      <div class="footerNote">
-        Demo commerciale — <b>Simulazione tecnica</b>.
-        In produzione: <b>VOP + Name Check (PSD2)</b> tramite provider (es. TrueLayer).
-      </div>
+let lastData = null;
 
-      <div class="microNote">
-        Tip demo: prova IBAN che inizia con <b>IT60</b> e nome <b>Mario Rossi</b>.
-      </div>
-    </div>
-  </div>
+function normalize(str){
+    return str.toLowerCase().trim();
+}
 
-  <script>
-    function normalize(str) {
-      return (str || "").trim().toLowerCase();
+function verifica(){
+    const iban = document.getElementById("iban").value.trim();
+    const nome = document.getElementById("nome").value;
+    const importo = parseFloat(document.getElementById("importo").value);
+    const result = document.getElementById("risultato");
+    const pdfBtn = document.getElementById("pdfBtn");
+
+    pdfBtn.style.display = "none";
+    result.innerHTML = "";
+
+    if(iban !== validIBAN){
+        result.innerHTML = "❌ IBAN non valido (demo).";
+        result.className = "result error";
+        return;
     }
 
-    function showResult(html, cls){
-      const el = document.getElementById("result");
-      el.style.display = "block";
-      el.className = "result " + cls;
-      el.innerHTML = html;
+    if(normalize(nome) !== validName){
+        result.innerHTML = "❌ Nome intestatario NON compatibile con IBAN (demo).";
+        result.className = "result error";
+        return;
     }
 
-    function verify() {
-      const ibanRaw = document.getElementById("iban").value;
-      const nameRaw = document.getElementById("name").value;
-      const amountRaw = document.getElementById("amount").value;
+    let score = 95;
+    let livello = "Basso";
 
-      const iban = (ibanRaw || "").trim();
-      const name = normalize(nameRaw);
-      const amount = parseFloat(amountRaw);
-
-      if (!iban || !name || !amountRaw) {
-        showResult("Compila tutti i campi.", "warning");
-        return;
-      }
-      if (isNaN(amount) || amount <= 0) {
-        showResult("Inserisci un importo valido (> 0).", "warning");
-        return;
-      }
-
-      // ✅ SIMULAZIONE: IBAN valido se inizia con IT60 (demo)
-      if (!iban.startsWith("IT60")) {
-        showResult("❌ IBAN non valido (demo).", "danger");
-        return;
-      }
-
-      // ✅ SIMULAZIONE: Name match valido SOLO per "Mario Rossi" (demo)
-      const validName = normalize("Mario Rossi");
-      if (name !== validName) {
-        showResult("❌ Nome intestatario NON compatibile con IBAN (demo).", "danger");
-        return;
-      }
-
-      // ✅ LOGICA IMPORTO: sopra 1000 richiede verifica avanzata (VOP)
-      if (amount > 1000) {
-        showResult("⚠ Match positivo. Importo elevato → attivazione verifica avanzata (VOP).", "warning");
-      } else {
-        showResult("✔ IBAN valido. Nome compatibile. Transazione a basso rischio.", "success");
-      }
+    if(importo > 1000){
+        score = 82;
+        livello = "Medio";
+        result.innerHTML = "⚠ Match positivo. Importo elevato → attivazione verifica avanzata (VOP).";
+        result.className = "result warning";
+    } else {
+        result.innerHTML = "✔ IBAN valido. Nome compatibile. Transazione a basso rischio.";
+        result.className = "result success";
     }
-  </script>
+
+    result.innerHTML += `<div class="score">Shield Score: ${score}/100</div>`;
+
+    lastData = {iban,nome,importo,score,livello};
+    pdfBtn.style.display = "block";
+}
+
+function generaPDF(){
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    const id = "IS-" + Date.now();
+
+    doc.setFontSize(18);
+    doc.text("IBAN Shield - Certificato di Verifica", 20, 20);
+
+    doc.setFontSize(12);
+    doc.text("ID Verifica: " + id, 20, 35);
+    doc.text("Data: " + new Date().toLocaleString(), 20, 45);
+    doc.text("IBAN: " + lastData.iban, 20, 55);
+    doc.text("Nome intestatario: " + lastData.nome, 20, 65);
+    doc.text("Importo: € " + lastData.importo, 20, 75);
+    doc.text("Livello rischio: " + lastData.livello, 20, 85);
+    doc.text("Shield Score: " + lastData.score + "/100", 20, 95);
+
+    doc.setTextColor(150);
+    doc.setFontSize(50);
+    doc.text("IBAN SHIELD", 35, 150, {angle:45});
+
+    doc.save("Certificato_IBAN_Shield.pdf");
+}
+
+</script>
+
 </body>
 </html>
