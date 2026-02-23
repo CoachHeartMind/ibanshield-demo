@@ -7,6 +7,9 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
+  <!-- QR generator (solo per PDF) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
   <style>
     :root{
       --bg1:#0b1220;
@@ -180,6 +183,17 @@
       color:rgba(17,24,39,.55);
       text-align:center;
     }
+
+    /* Contenitore invisibile per generare il QR (non mostra nulla in UI) */
+    #qrTmp {
+      position: fixed;
+      left: -9999px;
+      top: -9999px;
+      width: 256px;
+      height: 256px;
+      opacity: 0;
+      pointer-events: none;
+    }
   </style>
 </head>
 
@@ -188,7 +202,7 @@
 
     <div class="brandRow">
       <div class="brandLogo" aria-hidden="true">
-        <!-- LOGO (Scudo + spunta) INLINE SVG: nessun file esterno -->
+        <!-- LOGO (Scudo + spunta) INLINE SVG -->
         <svg width="44" height="44" viewBox="0 0 64 64" role="img" aria-label="IBAN Shield logo">
           <defs>
             <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
@@ -201,7 +215,6 @@
             </linearGradient>
           </defs>
 
-          <!-- Shield -->
           <path d="M32 6
                    C24 12 16 12 12 12
                    v18
@@ -220,7 +233,6 @@
                    c-2 0-9 0-16-5z"
                 fill="url(#g2)"/>
 
-          <!-- Check -->
           <path d="M22 32.5
                    l6 6
                    l14-16"
@@ -230,7 +242,6 @@
                 stroke-linecap="round"
                 stroke-linejoin="round"/>
 
-          <!-- Subtle highlight -->
           <path d="M20 18
                    c6 2 12 1 18-3"
                 fill="none"
@@ -271,6 +282,9 @@
 
     <div class="footerNote">Demo tecnica — in produzione: VOP + Name Check PSD2 via provider (es. TrueLayer).</div>
   </div>
+
+  <!-- invisibile, serve solo a creare il QR -->
+  <div id="qrTmp"></div>
 
 <script>
   // DEMO rules
@@ -333,7 +347,36 @@
     pdfBtn.style.display = "block";
   }
 
-  function generaPDF(){
+  // Crea QR come DataURL (PNG) senza mostrarlo in pagina
+  function makeQrDataUrl(text){
+    return new Promise((resolve) => {
+      const holder = document.getElementById("qrTmp");
+      holder.innerHTML = "";
+      new QRCode(holder, {
+        text,
+        width: 180,
+        height: 180,
+        correctLevel: QRCode.CorrectLevel.M
+      });
+
+      // qrcodejs crea <img> oppure <canvas> a seconda del browser
+      setTimeout(() => {
+        const img = holder.querySelector("img");
+        if(img && img.src){
+          resolve(img.src);
+          return;
+        }
+        const canvas = holder.querySelector("canvas");
+        if(canvas){
+          resolve(canvas.toDataURL("image/png"));
+          return;
+        }
+        resolve(null);
+      }, 50);
+    });
+  }
+
+  async function generaPDF(){
     if(!lastData) return;
 
     const { jsPDF } = window.jspdf;
@@ -342,19 +385,52 @@
     const id = "IS-" + Date.now();
     const now = new Date().toLocaleString("it-IT");
 
+    // Link “pagina di verifica” (demo). Lo userai poi per una vera route.
+    const verifyUrl = `https://example.com/verifica?id=${encodeURIComponent(id)}`;
+
     // Header band
     doc.setFillColor(15, 23, 42);
     doc.rect(0, 0, 210, 32, "F");
 
-    // Brand (testo pulito)
+    // LOGO nel PDF (scudo + spunta) in stile coerente
+    // (disegnato a vettore con forme base, stabile e pulito)
+    // Box icona
+    doc.setFillColor(37, 99, 235);
+    doc.roundedRect(15, 8, 16, 16, 3, 3, "F");
+    // mini scudo
+    doc.setFillColor(30, 64, 175);
+    doc.roundedRect(18.2, 10.8, 9.6, 10.2, 2.2, 2.2, "F");
+    // check verde
+    doc.setDrawColor(34, 197, 94);
+    doc.setLineWidth(1.6);
+    doc.line(20.5, 16.6, 22.7, 18.8);
+    doc.line(22.7, 18.8, 25.8, 14.7);
+
+    // Brand testo
     doc.setTextColor(255,255,255);
     doc.setFont("helvetica","bold");
     doc.setFontSize(18);
-    doc.text("IBAN Shield", 18, 20);
+    doc.text("IBAN Shield", 36, 20);
 
     doc.setFont("helvetica","normal");
     doc.setFontSize(10);
-    doc.text("Verified & Protected", 18, 27);
+    doc.text("Verified & Protected", 36, 27);
+
+    // Badge “Verified & Protected” (chip fintech) + icona scudo
+    doc.setFillColor(255,255,255);
+    doc.setDrawColor(255,255,255);
+    doc.roundedRect(150, 10, 42, 12, 4, 4, "F");
+    // icona scudo nel badge
+    doc.setFillColor(37, 99, 235);
+    doc.roundedRect(152, 12.2, 7.5, 7.5, 2, 2, "F");
+    doc.setDrawColor(34,197,94);
+    doc.setLineWidth(1.1);
+    doc.line(153.7, 16.1, 155.1, 17.5);
+    doc.line(155.1, 17.5, 157.2, 14.6);
+    doc.setTextColor(15,23,42);
+    doc.setFont("helvetica","bold");
+    doc.setFontSize(9);
+    doc.text("Verified & Protected", 160.5, 18.2);
 
     // Title
     doc.setTextColor(0,0,0);
@@ -382,17 +458,45 @@
     doc.text(lastData.nome, 70, 104);
     doc.text("€ " + lastData.importo, 70, 114);
 
+    // QR code (ID -> pagina verifica)
+    const qrDataUrl = await makeQrDataUrl(verifyUrl);
+    if(qrDataUrl){
+      // piccola cornice
+      doc.setDrawColor(220);
+      doc.setFillColor(255,255,255);
+      doc.roundedRect(160, 70, 26, 26, 3, 3, "FD");
+      doc.addImage(qrDataUrl, "PNG", 162, 72, 22, 22);
+      doc.setFont("helvetica","normal");
+      doc.setTextColor(110);
+      doc.setFontSize(8);
+      doc.text("QR Verifica", 173, 99, { align:"center" });
+    }
+
     // Score area (pulita e leggibile)
     doc.setFillColor(219, 234, 254);
     doc.rect(18, 132, 174, 28, "F");
 
     doc.setFont("helvetica","bold");
+    doc.setTextColor(0);
     doc.setFontSize(13);
     doc.text("Shield Score: " + lastData.score + "/100", 24, 148);
 
     doc.setFont("helvetica","normal");
     doc.setFontSize(11);
     doc.text("Livello Rischio: " + lastData.livello, 24, 156);
+
+    // Firma digitale (stile fintech) — discreta, in basso a destra
+    doc.setDrawColor(200);
+    doc.setLineWidth(0.2);
+    doc.line(138, 268, 192, 268);
+    doc.setFont("helvetica","italic");
+    doc.setTextColor(60);
+    doc.setFontSize(10);
+    doc.text("IBAN Shield", 192, 266, { align:"right" });
+    doc.setFont("helvetica","normal");
+    doc.setTextColor(120);
+    doc.setFontSize(8);
+    doc.text("Firma digitale (demo)", 192, 271.5, { align:"right" });
 
     // Watermark (NON invasivo): solo in basso, leggerissimo, non copre nulla
     doc.setTextColor(210);
