@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>IBAN Shield – Live Demo</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .card {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      width: 400px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #0a7cff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover {
+      background: #005fd1;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 10px;
+      border-radius: 6px;
+      font-weight: bold;
+      text-align: center;
+    }
+    .safe {
+      background: #d4edda;
+      color: #155724;
+    }
+    .risk {
+      background: #f8d7da;
+      color: #721c24;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h2>IBAN Shield Demo</h2>
+
+  <input type="text" id="iban" placeholder="Inserisci IBAN">
+  <input type="text" id="name" placeholder="Nome intestatario">
+  <input type="number" id="amount" placeholder="Importo">
+
+  <button onclick="checkIBAN()">Verifica Transazione</button>
+
+  <div id="output"></div>
+</div>
+
+<script>
+function checkIBAN() {
+  const iban = document.getElementById("iban").value;
+  const name = document.getElementById("name").value;
+  const amount = document.getElementById("amount").value;
+  const output = document.getElementById("output");
+
+  if (!iban || !name || !amount) {
+    output.innerHTML = "<div class='result risk'>Compila tutti i campi</div>";
+    return;
+  }
+
+  // DEMO LOGIC (mock risk engine)
+  if (name.toLowerCase() === "mario rossi") {
+    output.innerHTML = `
+      <div class='result safe'>
+        ✅ MATCH VERIFICATO<br>
+        Risk level: LOW<br>
+        Importo coperto fino a €1000
+      </div>`;
+  } else {
+    output.innerHTML = `
+      <div class='result risk'>
+        ❌ NO MATCH<br>
+        Risk level: HIGH<br>
+        Transazione da bloccare
+      </div>`;
+  }
+}
+</script>
+
+</body>
+</html>
