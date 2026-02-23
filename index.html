@@ -8,11 +8,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-
 body{
     margin:0;
     font-family:Arial, sans-serif;
-    background:linear-gradient(135deg,#1f2937,#111827);
+    background:linear-gradient(135deg,#0f172a,#1e293b);
     display:flex;
     justify-content:center;
     align-items:center;
@@ -24,22 +23,31 @@ body{
     background:white;
     padding:35px;
     border-radius:20px;
-    box-shadow:0 15px 40px rgba(0,0,0,0.35);
+    box-shadow:0 20px 50px rgba(0,0,0,0.4);
 }
 
 .logo-wrapper{
     display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:12px;
+    margin-bottom:25px;
+}
+
+.logo-icon{
+    width:50px;
+    height:50px;
+    background:#2563eb;
+    border-radius:12px;
+    display:flex;
     align-items:center;
     justify-content:center;
-    gap:14px;
-    margin-bottom:30px;
+    color:white;
+    font-size:24px;
+    font-weight:bold;
 }
 
-.logo-img{
-    width:60px;
-}
-
-.brand-text{
+.brand{
     display:flex;
     flex-direction:column;
     line-height:1;
@@ -63,7 +71,6 @@ input{
     margin-bottom:14px;
     border-radius:10px;
     border:1px solid #e5e7eb;
-    font-size:14px;
 }
 
 button{
@@ -74,10 +81,8 @@ button{
     background:#2563eb;
     color:white;
     font-weight:bold;
-    font-size:14px;
     cursor:pointer;
     margin-top:8px;
-    transition:0.2s;
 }
 
 button:hover{
@@ -88,55 +93,42 @@ button:hover{
     margin-top:18px;
     padding:15px;
     border-radius:12px;
-    font-size:14px;
 }
 
-.success{
-    background:#d1fae5;
-    color:#065f46;
-}
-
-.warning{
-    background:#fef3c7;
-    color:#92400e;
-}
-
-.error{
-    background:#fee2e2;
-    color:#991b1b;
-}
+.success{ background:#d1fae5; color:#065f46; }
+.warning{ background:#fef3c7; color:#92400e; }
+.error{ background:#fee2e2; color:#991b1b; }
 
 .score{
-    margin-top:8px;
+    margin-top:6px;
     font-weight:bold;
 }
 
 #pdfBtn{
     display:none;
-    margin-top:12px;
 }
-
 </style>
 </head>
 <body>
 
 <div class="container">
 
-    <div class="logo-wrapper">
-        <img src="logo.png" class="logo-img">
-        <div class="brand-text">
-            <span class="brand-main">IBAN</span>
-            <span class="brand-sub">Shield</span>
-        </div>
+<div class="logo-wrapper">
+    <div class="logo-icon">✔</div>
+    <div class="brand">
+        <span class="brand-main">IBAN</span>
+        <span class="brand-sub">Shield</span>
     </div>
+</div>
 
-    <input id="iban" placeholder="Inserisci IBAN">
-    <input id="nome" placeholder="Nome intestatario">
-    <input id="importo" type="number" placeholder="Importo (€)">
-    <button onclick="verifica()">Verifica Transazione</button>
+<input id="iban" placeholder="Inserisci IBAN">
+<input id="nome" placeholder="Nome intestatario">
+<input id="importo" type="number" placeholder="Importo (€)">
 
-    <div id="risultato"></div>
-    <button id="pdfBtn" onclick="generaPDF()">📄 Genera Certificato</button>
+<button onclick="verifica()">Verifica Transazione</button>
+
+<div id="risultato"></div>
+<button id="pdfBtn" onclick="generaPDF()">📄 Genera Certificato</button>
 
 </div>
 
@@ -202,64 +194,56 @@ function generaPDF(){
     const id = "IS-" + Date.now();
     const now = new Date().toLocaleString();
 
-    const img = new Image();
-    img.src = "logo.png";
+    doc.setFillColor(15,23,42);
+    doc.rect(0,0,210,40,"F");
 
-    img.onload = function(){
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(20);
+    doc.text("IBAN Shield",20,25);
 
-        doc.setFillColor(31,41,55);
-        doc.rect(0,0,210,40,"F");
+    doc.setFontSize(10);
+    doc.text("Verified & Protected",20,32);
 
-        doc.addImage(img,"PNG",20,8,20,20);
+    doc.setTextColor(0,0,0);
+    doc.setFontSize(16);
+    doc.text("Certificato Ufficiale di Verifica",20,60);
 
-        doc.setTextColor(255,255,255);
-        doc.setFontSize(20);
-        doc.text("IBAN Shield",50,22);
+    doc.rect(20,70,170,65);
 
-        doc.setFontSize(11);
-        doc.text("Verified & Protected",50,30);
+    doc.setFontSize(12);
+    doc.text("ID Verifica:",25,85);
+    doc.text(id,75,85);
 
-        doc.setTextColor(0,0,0);
-        doc.setFontSize(16);
-        doc.text("Certificato Ufficiale di Verifica",20,60);
+    doc.text("Data:",25,95);
+    doc.text(now,75,95);
 
-        doc.rect(20,70,170,65);
+    doc.text("IBAN:",25,105);
+    doc.text(lastData.iban,75,105);
 
-        doc.setFontSize(12);
-        doc.text("ID Verifica:",25,85);
-        doc.text(id,75,85);
+    doc.text("Intestatario:",25,115);
+    doc.text(lastData.nome,75,115);
 
-        doc.text("Data:",25,95);
-        doc.text(now,75,95);
+    doc.text("Importo:",25,125);
+    doc.text("€ "+lastData.importo,75,125);
 
-        doc.text("IBAN:",25,105);
-        doc.text(lastData.iban,75,105);
+    doc.setFillColor(219,234,254);
+    doc.rect(20,145,170,30,"F");
 
-        doc.text("Intestatario:",25,115);
-        doc.text(lastData.nome,75,115);
+    doc.setFontSize(14);
+    doc.text("Shield Score: "+lastData.score+"/100",25,165);
 
-        doc.text("Importo:",25,125);
-        doc.text("€ "+lastData.importo,75,125);
+    doc.setFontSize(12);
+    doc.text("Livello Rischio: "+lastData.livello,25,175);
 
-        doc.setFillColor(240,249,255);
-        doc.rect(20,145,170,35,"F");
+    doc.setTextColor(230);
+    doc.setFontSize(50);
+    doc.text("IBAN SHIELD",30,210,{angle:45});
 
-        doc.setFontSize(14);
-        doc.text("Shield Score: "+lastData.score+"/100",25,165);
+    doc.setFontSize(9);
+    doc.setTextColor(100);
+    doc.text("Documento generato automaticamente dal protocollo IBAN Shield v1.0",20,285);
 
-        doc.setFontSize(12);
-        doc.text("Livello Rischio: "+lastData.livello,25,175);
-
-        doc.setTextColor(235);
-        doc.setFontSize(60);
-        doc.text("IBAN SHIELD",30,210,{angle:45});
-
-        doc.setTextColor(120);
-        doc.setFontSize(9);
-        doc.text("Documento generato automaticamente dal protocollo IBAN Shield v1.0",20,285);
-
-        doc.save("Certificato_IBAN_Shield.pdf");
-    }
+    doc.save("Certificato_IBAN_Shield.pdf");
 }
 
 </script>
