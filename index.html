@@ -6,6 +6,8 @@
   <title>IBAN Shield - Demo</title>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <!-- QR generator (solo per PDF) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
   <style>
@@ -58,6 +60,7 @@
       justify-content:center;
       gap:14px;
       margin-bottom:18px;
+      user-select:none;
     }
 
     .brandLogo{
@@ -71,8 +74,16 @@
       border:1px solid rgba(37,99,235,.18);
     }
 
+    .brandText{
+      line-height:1.05;
+      display:flex;
+      flex-direction:column;
+      align-items:flex-start;
+    }
+
     .brandText .top{
       font-weight:900;
+      letter-spacing:.4px;
       font-size:26px;
       color:var(--text);
     }
@@ -81,12 +92,14 @@
       font-weight:800;
       font-size:18px;
       color:var(--primary);
+      margin-top:2px;
     }
 
     .tagline{
       text-align:center;
       color:var(--muted);
       font-size:12.5px;
+      margin-top:-8px;
       margin-bottom:18px;
     }
 
@@ -105,174 +118,574 @@
 
     input{
       width:100%;
-      padding:12px;
+      padding:12px 12px;
       border-radius:12px;
       border:1px solid var(--border);
+      background: rgba(255,255,255,.95);
+      outline:none;
       font-size:14.5px;
+      color:var(--text);
+      transition:.15s;
+    }
+
+    input:focus{
+      border-color: rgba(37,99,235,.55);
+      box-shadow: 0 0 0 4px rgba(37,99,235,.12);
     }
 
     .btn{
       width:100%;
-      padding:13px;
+      padding:13px 14px;
       border:none;
       border-radius:14px;
       background: linear-gradient(180deg, var(--primary), var(--primary2));
       color:white;
       font-weight:900;
+      letter-spacing:.2px;
       font-size:15px;
       cursor:pointer;
+      transition:.15s;
+      box-shadow: 0 12px 28px rgba(37,99,235,.28);
       margin-top:6px;
     }
 
-    .btn.secondary{ display:none; background:#0f172a; }
-    .btn.pay{ display:none; background:#16a34a; }
+    .btn:hover{ filter:brightness(1.02); transform: translateY(-1px); }
+    .btn:active{ transform: translateY(0px); }
+
+    .btn.secondary{
+      background: linear-gradient(180deg, #0f172a, #0b1220);
+      box-shadow: 0 12px 28px rgba(0,0,0,.22);
+      display:none;
+      margin-top:10px;
+    }
+
+    .btn.pay{
+      background: linear-gradient(180deg, #16a34a, #15803d);
+      box-shadow: 0 12px 28px rgba(22,163,74,.22);
+      display:none;
+      margin-top:10px;
+    }
 
     .result{
       margin-top:14px;
-      padding:14px;
+      padding:14px 14px;
       border-radius:14px;
       font-size:14px;
+      border:1px solid rgba(0,0,0,.06);
     }
 
     .success{ background: var(--okBg); color: var(--okText); }
     .warning{ background: var(--warnBg); color: var(--warnText); }
     .error{ background: var(--errBg); color: var(--errText); }
 
-    .score{ margin-top:8px; font-weight:900; }
+    .score{
+      margin-top:8px;
+      font-weight:900;
+      font-size:14px;
+    }
 
-    #qrTmp{
-      position:fixed;
-      left:-9999px;
-      top:-9999px;
+    .footerNote{
+      margin-top:12px;
+      font-size:11.5px;
+      color:rgba(17,24,39,.55);
+      text-align:center;
+    }
+
+    /* Contenitore invisibile per generare il QR (non mostra nulla in UI) */
+    #qrTmp {
+      position: fixed;
+      left: -9999px;
+      top: -9999px;
+      width: 256px;
+      height: 256px;
+      opacity: 0;
+      pointer-events: none;
     }
   </style>
 </head>
 
 <body>
-<div class="card">
+  <div class="card">
 
-  <div class="brandRow">
-    <div class="brandLogo">
-      <svg width="44" height="44" viewBox="0 0 64 64">
-        <defs>
-          <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="#2563eb"/>
-            <stop offset="1" stop-color="#1e40af"/>
-          </linearGradient>
-        </defs>
-        <path d="M32 6 C24 12 16 12 12 12 v18 c0 14 8 23 20 28 c12-5 20-14 20-28 V12 c-4 0-12 0-20-6z" fill="url(#g1)"/>
-        <path d="M22 32.5 l6 6 l14-16" fill="none" stroke="#22c55e" stroke-width="6"/>
-      </svg>
+    <div class="brandRow">
+      <div class="brandLogo" aria-hidden="true">
+        <!-- LOGO (Scudo + spunta) INLINE SVG -->
+        <svg width="44" height="44" viewBox="0 0 64 64" role="img" aria-label="IBAN Shield logo">
+          <defs>
+            <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#2563eb"/>
+              <stop offset="1" stop-color="#1e40af"/>
+            </linearGradient>
+            <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#60a5fa" stop-opacity="0.95"/>
+              <stop offset="1" stop-color="#3b82f6" stop-opacity="0.90"/>
+            </linearGradient>
+          </defs>
+
+          <path d="M32 6
+                   C24 12 16 12 12 12
+                   v18
+                   c0 14 8 23 20 28
+                   c12-5 20-14 20-28
+                   V12
+                   c-4 0-12 0-20-6z"
+                fill="url(#g1)"/>
+
+          <path d="M32 12
+                   C25 17 18 17 16 17
+                   v13
+                   c0 11 6.5 18 16 22
+                   c9.5-4 16-11 16-22
+                   V17
+                   c-2 0-9 0-16-5z"
+                fill="url(#g2)"/>
+
+          <path d="M22 32.5
+                   l6 6
+                   l14-16"
+                fill="none"
+                stroke="#22c55e"
+                stroke-width="6"
+                stroke-linecap="round"
+                stroke-linejoin="round"/>
+
+          <path d="M20 18
+                   c6 2 12 1 18-3"
+                fill="none"
+                stroke="rgba(255,255,255,.35)"
+                stroke-width="3"
+                stroke-linecap="round"/>
+        </svg>
+      </div>
+
+      <div class="brandText">
+        <div class="top">IBAN</div>
+        <div class="sub">Shield</div>
+      </div>
     </div>
-    <div class="brandText">
-      <div class="top">IBAN</div>
-      <div class="sub">Shield</div>
+
+    <div class="tagline">Verifica preventiva IBAN + intestatario prima del bonifico.</div>
+
+    <div class="field">
+      <label for="iban">IBAN</label>
+      <input id="iban" placeholder="Es. IT60X..." autocomplete="off" />
     </div>
+
+    <div class="field">
+      <label for="nome">Nome intestatario</label>
+      <input id="nome" placeholder="Es. Mario Rossi" autocomplete="off" />
+    </div>
+
+    <div class="field">
+      <label for="importo">Importo (€)</label>
+      <input id="importo" type="number" placeholder="Es. 100" />
+    </div>
+
+    <button class="btn" onclick="verifica()">Verifica Transazione</button>
+
+    <div id="risultato"></div>
+
+    <!-- NUOVO: pagamento demo per sbloccare esito ufficiale + certificato -->
+    <button id="payBtn" class="btn pay" onclick="pagaESblocca()">💳 Paga & Sblocca Esito Ufficiale</button>
+
+    <button id="pdfBtn" class="btn secondary" onclick="generaPDF()">📄 Genera Certificato</button>
+
+    <div class="footerNote">Demo tecnica — in produzione: emissione certificato solo post-pagamento + verifica online univoca per operazione.</div>
   </div>
 
-  <div class="tagline">Verifica preventiva IBAN + intestatario prima del bonifico.</div>
-
-  <div class="field">
-    <label>IBAN</label>
-    <input id="iban" />
-  </div>
-
-  <div class="field">
-    <label>Nome intestatario</label>
-    <input id="nome" />
-  </div>
-
-  <div class="field">
-    <label>Importo (€)</label>
-    <input id="importo" type="number" />
-  </div>
-
-  <button class="btn" onclick="verifica()">Verifica Transazione</button>
-  <div id="risultato"></div>
-  <button id="payBtn" class="btn pay" onclick="paga()">💳 Paga & Sblocca</button>
-  <button id="pdfBtn" class="btn secondary" onclick="generaPDF()">📄 Genera Certificato</button>
-
-</div>
-
-<div id="qrTmp"></div>
+  <!-- invisibile, serve solo a creare il QR -->
+  <div id="qrTmp"></div>
 
 <script>
-const validIBAN="IT60X0542811101000000123456";
-const validName="mario rossi";
-let lastData=null;
+  // DEMO rules (solo per simulazione)
+  const validIBAN = "IT60X0542811101000000123456";
+  const validName = "mario rossi";
 
-function verifica(){
-  const iban=document.getElementById("iban").value.trim();
-  const nome=document.getElementById("nome").value.trim();
-  const importo=parseFloat(document.getElementById("importo").value);
+  // Stato
+  let lastData = null;
 
-  const result=document.getElementById("risultato");
-  const payBtn=document.getElementById("payBtn");
-  const pdfBtn=document.getElementById("pdfBtn");
-
-  result.innerHTML="";
-  payBtn.style.display="none";
-  pdfBtn.style.display="none";
-
-  if(!iban||!nome||!importo){ result.innerHTML="❌ Compila tutti i campi."; result.className="result error"; return;}
-
-  if(iban!==validIBAN){ result.innerHTML="❌ IBAN non valido (demo)."; result.className="result error"; return;}
-
-  lastData={
-    txId:"IS-"+Date.now(),
-    iban,nome,importo,
-    unlocked:false
-  };
-
-  result.innerHTML="🔒 Verifica disponibile. Completa il pagamento per sbloccare esito ufficiale.";
-  result.className="result warning";
-  payBtn.style.display="block";
-}
-
-function paga(){
-  const result=document.getElementById("risultato");
-  const pdfBtn=document.getElementById("pdfBtn");
-
-  const match=(lastData.nome.toLowerCase()===validName);
-  if(!match){ result.innerHTML="❌ Intestatario non compatibile."; result.className="result error"; return;}
-
-  let score=95;
-  let livello="Elevato livello di sicurezza";
-
-  if(lastData.importo>1000){
-    score=82;
-    livello="Sicurezza verificata con controllo avanzato";
+  // Store demo per "anti-riuso" (client-side). In produzione: server + DB.
+  const USED_KEY = "iban_shield_used_tx_ids_v1";
+  function loadUsed(){
+    try { return JSON.parse(localStorage.getItem(USED_KEY) || "[]"); } catch { return []; }
+  }
+  function markUsed(txId){
+    const used = loadUsed();
+    if(!used.includes(txId)) used.push(txId);
+    localStorage.setItem(USED_KEY, JSON.stringify(used));
+  }
+  function isUsed(txId){
+    return loadUsed().includes(txId);
   }
 
-  lastData.unlocked=true;
-  lastData.score=score;
-  lastData.livello=livello;
+  function normalize(str){
+    return (str || "").toLowerCase().trim().replace(/\s+/g," ");
+  }
 
-  result.innerHTML=`✅ Esito ufficiale positivo.<div class="score">Shield Score: ${score}/100</div>`;
-  result.className="result success";
-  pdfBtn.style.display="block";
-}
+  function verifica(){
+    const iban = (document.getElementById("iban").value || "").trim();
+    const nome = document.getElementById("nome").value || "";
+    const importoRaw = document.getElementById("importo").value;
+    const importo = parseFloat(importoRaw);
 
-async function generaPDF(){
-  if(!lastData||!lastData.unlocked) return;
+    const result = document.getElementById("risultato");
+    const pdfBtn = document.getElementById("pdfBtn");
+    const payBtn = document.getElementById("payBtn");
 
-  const {jsPDF}=window.jspdf;
-  const doc=new jsPDF();
+    result.innerHTML = "";
+    result.className = "";
+    pdfBtn.style.display = "none";
+    payBtn.style.display = "none";
 
-  doc.text("Certificato Ufficiale di Verifica",20,20);
-  doc.text("ID Operazione: "+lastData.txId,20,30);
-  doc.text("IBAN: "+lastData.iban,20,40);
-  doc.text("Intestatario: "+lastData.nome,20,50);
-  doc.text("Importo: € "+lastData.importo,20,60);
-  doc.text("Shield Score: "+lastData.score+"/100",20,70);
-  doc.text("Livello Sicurezza: "+lastData.livello,20,80);
+    if(!iban || !nome || !importoRaw){
+      result.innerHTML = "❌ Compila IBAN, intestatario e importo.";
+      result.className = "result error";
+      return;
+    }
 
-  doc.setFontSize(8);
-  doc.text("Il presente certificato attesta esclusivamente l’esito della verifica tecnica alla data di emissione.",20,95);
-  doc.text("La validità è subordinata alla verifica dello stato online tramite QR.",20,100);
+    if(iban !== validIBAN){
+      // qui puoi lasciare l'errore IBAN (è utile anche prima del pagamento)
+      result.innerHTML = "❌ IBAN non valido (demo).";
+      result.className = "result error";
+      return;
+    }
 
-  doc.save("Certificato_IBAN_Shield.pdf");
-}
+    // NOTA IMPORTANTE (come da tua osservazione):
+    // Non mostriamo l'esito di match prima del pagamento.
+    // Mostriamo solo che la verifica è "disponibile" e che l'esito ufficiale si sblocca pagando.
+    const txId = makeTxId(); // univoco per singola operazione
+    lastData = {
+      txId,
+      createdAt: new Date().toISOString(),
+      iban,
+      nome: nome.trim(),
+      importo,
+      // esito "bloccato" finché non paghi
+      unlocked: false,
+      score: null,
+      livello: null,
+      matchOk: null,
+      // in produzione: aggiungi controparte marketplace (orderId, listingId, buyerId, sellerId ecc.)
+      marketplaceRef: "DEMO"
+    };
+
+    result.innerHTML =
+      `🔒 Verifica disponibile.<br>` +
+      `Per sbloccare <b>esito ufficiale</b>, <b>Shield Score</b> e <b>certificato</b>, completa il pagamento.`;
+    result.className = "result warning";
+
+    payBtn.style.display = "block";
+  }
+
+  // Simula pagamento: dopo il pagamento sblocchiamo esito + certificato
+  function pagaESblocca(){
+    const result = document.getElementById("risultato");
+    const pdfBtn = document.getElementById("pdfBtn");
+    const payBtn = document.getElementById("payBtn");
+
+    if(!lastData){
+      result.innerHTML = "❌ Esegui prima la verifica.";
+      result.className = "result error";
+      return;
+    }
+
+    // Simulazione pagamento OK
+    // Ora calcoliamo l'esito (demo) e lo mostriamo
+    const matchOk = (normalize(lastData.nome) === validName);
+
+    if(!matchOk){
+      // dopo pagamento, se non matcha: mostriamo esito ufficiale negativo
+      lastData.unlocked = true;
+      lastData.matchOk = false;
+      lastData.score = 0;
+      lastData.livello = "Alto";
+
+      result.innerHTML =
+        `❌ Esito ufficiale: intestatario NON compatibile (demo).<br>` +
+        `<div class="score">Shield Score: 0/100</div>`;
+      result.className = "result error";
+
+      // comunque potresti decidere di NON generare certificato in caso negativo.
+      // Qui lo teniamo bloccato.
+      pdfBtn.style.display = "none";
+      payBtn.style.display = "none";
+      return;
+    }
+
+    // Se match OK (demo)
+    let score = 95;
+    let livello = "Basso";
+    let msg = "✅ Esito ufficiale: IBAN valido e intestatario compatibile. Transazione a basso rischio.";
+    let cls = "result success";
+
+    if(lastData.importo > 1000){
+      score = 82;
+      livello = "Medio";
+      msg = "⚠ Esito ufficiale: match positivo. Importo elevato → verifica avanzata (VOP).";
+      cls = "result warning";
+    }
+
+    lastData.unlocked = true;
+    lastData.matchOk = true;
+    lastData.score = score;
+    lastData.livello = livello;
+
+    result.innerHTML = `${msg}<div class="score">Shield Score: ${score}/100</div>`;
+    result.className = cls;
+
+    payBtn.style.display = "none";
+    pdfBtn.style.display = "block";
+  }
+
+  // Crea QR come DataURL (PNG) senza mostrarlo in pagina
+  function makeQrDataUrl(text){
+    return new Promise((resolve) => {
+      const holder = document.getElementById("qrTmp");
+      holder.innerHTML = "";
+      new QRCode(holder, {
+        text,
+        width: 180,
+        height: 180,
+        correctLevel: QRCode.CorrectLevel.M
+      });
+
+      setTimeout(() => {
+        const img = holder.querySelector("img");
+        if(img && img.src){
+          resolve(img.src);
+          return;
+        }
+        const canvas = holder.querySelector("canvas");
+        if(canvas){
+          resolve(canvas.toDataURL("image/png"));
+          return;
+        }
+        resolve(null);
+      }, 50);
+    });
+  }
+
+  // ID univoco per singola operazione (demo).
+  // In produzione: generato dal server e legato al pagamento/orderId.
+  function makeTxId(){
+    // piccolo mix: timestamp + random base36
+    return "IS-" + Date.now() + "-" + Math.random().toString(36).slice(2,8).toUpperCase();
+  }
+
+  // Converte l'SVG del logo (quello della maschera) in PNG DataURL così il PDF usa IDENTICO logo e colori
+  function svgLogoToPngDataUrl(sizePx = 96){
+    return new Promise((resolve) => {
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="${sizePx}" height="${sizePx}" viewBox="0 0 64 64">
+          <defs>
+            <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#2563eb"/>
+              <stop offset="1" stop-color="#1e40af"/>
+            </linearGradient>
+            <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#60a5fa" stop-opacity="0.95"/>
+              <stop offset="1" stop-color="#3b82f6" stop-opacity="0.90"/>
+            </linearGradient>
+          </defs>
+
+          <path d="M32 6 C24 12 16 12 12 12 v18 c0 14 8 23 20 28 c12-5 20-14 20-28 V12 c-4 0-12 0-20-6z" fill="url(#g1)"/>
+          <path d="M32 12 C25 17 18 17 16 17 v13 c0 11 6.5 18 16 22 c9.5-4 16-11 16-22 V17 c-2 0-9 0-16-5z" fill="url(#g2)"/>
+
+          <path d="M22 32.5 l6 6 l14-16"
+                fill="none"
+                stroke="#22c55e"
+                stroke-width="6"
+                stroke-linecap="round"
+                stroke-linejoin="round"/>
+
+          <path d="M20 18 c6 2 12 1 18-3"
+                fill="none"
+                stroke="rgba(255,255,255,.35)"
+                stroke-width="3"
+                stroke-linecap="round"/>
+        </svg>
+      `;
+
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = sizePx;
+        canvas.height = sizePx;
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0,0,sizePx,sizePx);
+        ctx.drawImage(img, 0, 0, sizePx, sizePx);
+        resolve(canvas.toDataURL("image/png"));
+      };
+
+      const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+      img.src = url;
+
+      // revoke dopo load
+      img.onloadend = () => { try { URL.revokeObjectURL(url); } catch {} };
+    });
+  }
+
+  async function generaPDF(){
+    const result = document.getElementById("risultato");
+
+    if(!lastData){
+      result.innerHTML = "❌ Esegui prima la verifica.";
+      result.className = "result error";
+      return;
+    }
+
+    if(!lastData.unlocked){
+      result.innerHTML = "🔒 Certificato disponibile solo dopo pagamento.";
+      result.className = "result warning";
+      return;
+    }
+
+    if(isUsed(lastData.txId)){
+      result.innerHTML = "❌ Questo certificato risulta già utilizzato (demo). Genera una nuova verifica per una nuova operazione.";
+      result.className = "result error";
+      return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:"mm", format:"a4" });
+
+    const now = new Date().toLocaleString("it-IT");
+
+    // Link “pagina di verifica” (demo).
+    // In produzione: route reale che mostra stato (valido/usato/revocato/scaduto) e dettagli MINIMI.
+    const verifyUrl = `https://example.com/verifica?tx=${encodeURIComponent(lastData.txId)}`;
+
+    // Header band
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, 210, 32, "F");
+
+    // LOGO IDENTICO (convertito dall'SVG della maschera)
+    const logoPng = await svgLogoToPngDataUrl(96);
+    if(logoPng){
+      // posizionamento simile alla versione precedente
+      doc.addImage(logoPng, "PNG", 15, 6.5, 18, 18);
+    }
+
+    // Brand testo
+    doc.setTextColor(255,255,255);
+    doc.setFont("helvetica","bold");
+    doc.setFontSize(18);
+    doc.text("IBAN Shield", 36, 20);
+
+    doc.setFont("helvetica","normal");
+    doc.setFontSize(10);
+    doc.text("Verified & Protected", 36, 27);
+
+    // Badge “Verified & Protected”
+    doc.setFillColor(255,255,255);
+    doc.setDrawColor(255,255,255);
+    doc.roundedRect(150, 10, 42, 12, 4, 4, "F");
+
+    // icona nel badge = stesso logo ma in miniatura (identico cromaticamente)
+    if(logoPng){
+      doc.addImage(logoPng, "PNG", 151.8, 11.3, 9.2, 9.2);
+    } else {
+      // fallback minimale se conversione fallisce
+      doc.setFillColor(37, 99, 235);
+      doc.roundedRect(152, 12.2, 7.5, 7.5, 2, 2, "F");
+    }
+
+    doc.setTextColor(15,23,42);
+    doc.setFont("helvetica","bold");
+    doc.setFontSize(9);
+    doc.text("Verified & Protected", 162.0, 18.2);
+
+    // Title
+    doc.setTextColor(0,0,0);
+    doc.setFont("helvetica","bold");
+    doc.setFontSize(16);
+    doc.text("Certificato Ufficiale di Verifica", 18, 52);
+
+    // Info box
+    doc.setDrawColor(60);
+    doc.setLineWidth(0.3);
+    doc.rect(18, 60, 174, 66);
+
+    doc.setFont("helvetica","bold");
+    doc.setFontSize(11);
+    doc.text("ID Operazione:", 24, 74);
+    doc.text("Data emissione:", 24, 84);
+    doc.text("IBAN:", 24, 94);
+    doc.text("Intestatario:", 24, 104);
+    doc.text("Importo:", 24, 114);
+
+    doc.setFont("helvetica","normal");
+    doc.text(lastData.txId, 70, 74);
+    doc.text(now, 70, 84);
+    doc.text(lastData.iban, 70, 94);
+    doc.text(lastData.nome, 70, 104);
+    doc.text("€ " + lastData.importo, 70, 114);
+
+    // Nota anti-riuso (chiave per marketplace)
+    doc.setFont("helvetica","normal");
+    doc.setTextColor(90);
+    doc.setFontSize(9);
+    doc.text("Valido esclusivamente per questa operazione (ID Operazione). Verifica stato via QR.", 24, 122);
+
+    // QR code (ID -> pagina verifica)
+    const qrDataUrl = await makeQrDataUrl(verifyUrl);
+    if(qrDataUrl){
+      doc.setDrawColor(220);
+      doc.setFillColor(255,255,255);
+      doc.roundedRect(160, 70, 26, 26, 3, 3, "FD");
+      doc.addImage(qrDataUrl, "PNG", 162, 72, 22, 22);
+      doc.setFont("helvetica","normal");
+      doc.setTextColor(110);
+      doc.setFontSize(8);
+      doc.text("QR Verifica", 173, 99, { align:"center" });
+    }
+
+    // Score area
+    doc.setFillColor(219, 234, 254);
+    doc.rect(18, 136, 174, 28, "F");
+
+    doc.setFont("helvetica","bold");
+    doc.setTextColor(0);
+    doc.setFontSize(13);
+    doc.text("Shield Score: " + lastData.score + "/100", 24, 152);
+
+    doc.setFont("helvetica","normal");
+    doc.setFontSize(11);
+    doc.text("Livello Rischio: " + lastData.livello, 24, 160);
+
+    // Firma digitale (demo)
+    doc.setDrawColor(200);
+    doc.setLineWidth(0.2);
+    doc.line(138, 268, 192, 268);
+    doc.setFont("helvetica","italic");
+    doc.setTextColor(60);
+    doc.setFontSize(10);
+    doc.text("IBAN Shield", 192, 266, { align:"right" });
+    doc.setFont("helvetica","normal");
+    doc.setTextColor(120);
+    doc.setFontSize(8);
+    doc.text("Firma digitale (demo)", 192, 271.5, { align:"right" });
+
+    // Watermark
+    doc.setTextColor(210);
+    doc.setFont("helvetica","bold");
+    doc.setFontSize(28);
+    doc.text("IBAN SHIELD", 105, 282, { align:"center" });
+
+    // Footer
+    doc.setTextColor(120);
+    doc.setFont("helvetica","normal");
+    doc.setFontSize(9);
+    doc.text("Documento generato automaticamente dal protocollo IBAN Shield (demo).", 18, 292);
+
+    // IMPORTANTISSIMO: dopo emissione, marchiamo "usato" (demo).
+    // In produzione: al primo redeem/claim o al primo download, o al pagamento confermato.
+    markUsed(lastData.txId);
+
+    doc.save("Certificato_IBAN_Shield.pdf");
+  }
 </script>
 </body>
 </html>
