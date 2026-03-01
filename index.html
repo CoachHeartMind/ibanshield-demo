@@ -1,189 +1,605 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="it">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>IBAN Shield</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>IBAN Shield — Demo</title>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-<style>
-body{
-  margin:0;
-  font-family:Inter,system-ui;
-  background:linear-gradient(135deg,#0b1220,#111b2f);
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
-}
-.card{
-  width:520px;
-  background:white;
-  border-radius:22px;
-  padding:30px;
-  box-shadow:0 25px 70px rgba(0,0,0,.5);
-}
-h1{
-  margin:0 0 15px 0;
-  font-size:28px;
-}
-input{
-  width:100%;
-  padding:12px;
-  margin-top:12px;
-  border-radius:12px;
-  border:1px solid #ddd;
-}
-button{
-  width:100%;
-  padding:14px;
-  border:none;
-  border-radius:14px;
-  margin-top:15px;
-  font-weight:800;
-  cursor:pointer;
-}
-.primary{ background:#2563eb; color:white; }
-.pay{ background:#16a34a; color:white; display:none; }
-.pdf{ background:black; color:white; display:none; }
+  <style>
+    :root{
+      --bg1:#0b1220;
+      --bg2:#111b2f;
+      --card:rgba(255,255,255,.92);
+      --text:#0f172a;
+      --muted:#6b7280;
+      --primary:#2563eb;
+      --primary2:#1e40af;
+      --border:#e5e7eb;
 
-.result{
-  margin-top:20px;
-  padding:15px;
-  border-radius:14px;
-  font-weight:700;
-}
-.success{ background:#dcfce7; color:#065f46; }
-.warning{ background:#fef9c3; color:#92400e; }
-.error{ background:#fee2e2; color:#991b1b; }
-</style>
+      --okBg:#d1fae5;   --okText:#065f46;   --okBorder:#34d399;
+      --midBg:#fef3c7;  --midText:#92400e;  --midBorder:#f59e0b;
+      --badBg:#fee2e2;  --badText:#991b1b;  --badBorder:#ef4444;
+    }
+
+    body{
+      margin:0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background:
+        radial-gradient(1000px 500px at 20% 10%, rgba(37,99,235,.28), transparent 60%),
+        radial-gradient(900px 600px at 90% 30%, rgba(16,185,129,.14), transparent 60%),
+        linear-gradient(135deg,var(--bg1),var(--bg2));
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+    }
+
+    .card{
+      width:min(560px, 94vw);
+      background: var(--card);
+      backdrop-filter: blur(10px);
+      border:1px solid rgba(255,255,255,.35);
+      border-radius:22px;
+      box-shadow: 0 25px 70px rgba(0,0,0,.45);
+      padding:26px 26px 22px;
+    }
+
+    .brandRow{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:14px;
+      margin-bottom:10px;
+      user-select:none;
+    }
+
+    .brandLogo{
+      width:56px;height:56px;border-radius:16px;
+      display:flex;align-items:center;justify-content:center;
+      background: rgba(37,99,235,.10);
+      border:1px solid rgba(37,99,235,.18);
+    }
+
+    .brandText{ line-height:1.05; display:flex; flex-direction:column; align-items:flex-start; }
+    .brandText .top{ font-weight:900; letter-spacing:.4px; font-size:28px; color:var(--text); }
+    .brandText .sub{ font-weight:800; font-size:18px; color:var(--primary); margin-top:2px; }
+
+    .tagline{
+      text-align:center;
+      color:var(--muted);
+      font-size:12.5px;
+      margin:0 0 18px;
+    }
+
+    .grid{ display:grid; gap:12px; }
+    .field{ display:flex; flex-direction:column; gap:8px; }
+    label{ font-size:12px; color:#374151; font-weight:800; }
+
+    input{
+      width:100%;
+      padding:12px 12px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.95);
+      outline:none;
+      font-size:14.5px;
+      color:var(--text);
+      transition:.15s;
+    }
+    input:focus{
+      border-color: rgba(37,99,235,.55);
+      box-shadow: 0 0 0 4px rgba(37,99,235,.12);
+    }
+
+    .btn{
+      width:100%;
+      padding:13px 14px;
+      border:none;
+      border-radius:14px;
+      background: linear-gradient(180deg, var(--primary), var(--primary2));
+      color:white;
+      font-weight:900;
+      letter-spacing:.2px;
+      font-size:15px;
+      cursor:pointer;
+      transition:.15s;
+      box-shadow: 0 12px 28px rgba(37,99,235,.28);
+      margin-top:6px;
+    }
+    .btn:hover{ filter:brightness(1.02); transform: translateY(-1px); }
+    .btn:active{ transform: translateY(0px); }
+    .btn:disabled{ opacity:.55; cursor:not-allowed; transform:none; }
+
+    .btn.pay{
+      background: linear-gradient(180deg, #16a34a, #15803d);
+      box-shadow: 0 12px 28px rgba(22,163,74,.22);
+      display:none;
+    }
+    .btn.pdf{
+      background: linear-gradient(180deg, #0f172a, #0b1220);
+      box-shadow: 0 12px 28px rgba(0,0,0,.22);
+      display:none;
+    }
+
+    .result{
+      margin-top:14px;
+      padding:14px 14px;
+      border-radius:14px;
+      font-size:14px;
+      border:1px solid rgba(0,0,0,.06);
+    }
+    .ok{ background:var(--okBg); color:var(--okText); border-left:6px solid var(--okBorder); }
+    .mid{ background:var(--midBg); color:var(--midText); border-left:6px solid var(--midBorder); }
+    .bad{ background:var(--badBg); color:var(--badText); border-left:6px solid var(--badBorder); }
+
+    .row{
+      display:flex; gap:10px; flex-wrap:wrap; margin-top:8px;
+      font-size:12px; color:rgba(17,24,39,.75);
+    }
+    .pill{
+      background: rgba(15,23,42,.06);
+      border:1px solid rgba(15,23,42,.08);
+      padding:6px 10px;
+      border-radius:999px;
+      font-weight:800;
+    }
+    .score{ margin-top:10px; font-weight:900; font-size:14px; }
+
+    details{
+      margin-top:12px;
+      border:1px dashed rgba(15,23,42,.18);
+      border-radius:14px;
+      padding:10px 12px;
+      background: rgba(255,255,255,.65);
+    }
+    summary{ cursor:pointer; font-weight:900; color:#0f172a; }
+    .mini{ font-size:11.5px; color:rgba(15,23,42,.65); margin-top:10px; text-align:center; }
+
+    #qrTmp{ position:fixed; left:-9999px; top:-9999px; width:256px; height:256px; opacity:0; pointer-events:none; }
+  </style>
 </head>
 
 <body>
-<div class="card">
+  <div class="card">
+    <div class="brandRow">
+      <div class="brandLogo" aria-hidden="true">
+        <!-- LOGO (Scudo + spunta) INLINE SVG -->
+        <svg width="44" height="44" viewBox="0 0 64 64" role="img" aria-label="IBAN Shield logo">
+          <defs>
+            <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#2563eb"/>
+              <stop offset="1" stop-color="#1e40af"/>
+            </linearGradient>
+            <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#60a5fa" stop-opacity="0.95"/>
+              <stop offset="1" stop-color="#3b82f6" stop-opacity="0.90"/>
+            </linearGradient>
+          </defs>
 
-<h1>IBAN Shield</h1>
+          <path d="M32 6 C24 12 16 12 12 12 v18 c0 14 8 23 20 28 c12-5 20-14 20-28 V12 c-4 0-12 0-20-6z" fill="url(#g1)"/>
+          <path d="M32 12 C25 17 18 17 16 17 v13 c0 11 6.5 18 16 22 c9.5-4 16-11 16-22 V17 c-2 0-9 0-16-5z" fill="url(#g2)"/>
+          <path d="M22 32.5 l6 6 l14-16" fill="none" stroke="#22c55e" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M20 18 c6 2 12 1 18-3" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="brandText">
+        <div class="top">IBAN</div>
+        <div class="sub">Shield</div>
+      </div>
+    </div>
 
-<input id="iban" placeholder="IBAN">
-<input id="name" placeholder="Intestatario">
-<input id="amount" type="number" placeholder="Importo €">
+    <div class="tagline">Verifica tecnica IBAN + intestatario prima del bonifico.</div>
 
-<button class="primary" onclick="preCheck()">Verifica</button>
+    <div class="grid">
+      <div class="field">
+        <label for="iban">IBAN</label>
+        <input id="iban" placeholder="Es. IT60X..." autocomplete="off" />
+      </div>
 
-<div id="result"></div>
+      <div class="field">
+        <label for="name">Intestatario</label>
+        <input id="name" placeholder="Es. Mario Rossi" autocomplete="off" />
+      </div>
 
-<button id="payBtn" class="pay" onclick="unlock()">💳 Paga €1,99 & Sblocca</button>
-<button id="pdfBtn" class="pdf" onclick="generatePDF()">📄 Scarica Certificato</button>
+      <div class="field">
+        <label for="amount">Importo (€)</label>
+        <input id="amount" type="number" placeholder="Es. 100" />
+      </div>
 
-</div>
+      <button id="startBtn" class="btn" onclick="startFlow()">Verifica</button>
+      <div id="result"></div>
+
+      <button id="payBtn" class="btn pay" onclick="payAndUnlock()">💳 Paga & Sblocca esito</button>
+      <button id="pdfBtn" class="btn pdf" onclick="downloadPDF()">⬇ Scarica Certificato (PDF)</button>
+
+      <details>
+        <summary>Impostazioni demo (API)</summary>
+        <div style="margin-top:10px" class="grid">
+          <div class="field">
+            <label for="apiBase">API Base URL</label>
+            <input id="apiBase" placeholder="https://tuo-servizio.onrender.com" />
+          </div>
+          <div class="field">
+            <label for="apiKey">API Key (X-API-Key)</label>
+            <input id="apiKey" placeholder="(incolla la tua chiave)" />
+          </div>
+          <button class="btn" onclick="saveSettings()">Salva impostazioni</button>
+        </div>
+      </details>
+
+      <div class="mini">Demo: mostra esito solo dopo “pagamento” (simulato). In produzione: pagamento reale + stato online univoco.</div>
+    </div>
+  </div>
+
+  <div id="qrTmp"></div>
 
 <script>
+  // -----------------------------
+  // State
+  // -----------------------------
+  let feeEur = 1.99;
+  let requireApiKey = true;
 
-const RENDER_BASE = "https://iban-shield.onrender.com";
+  let pending = null;     // data before pay
+  let verified = null;    // API response after pay
 
-let lastResponse = null;
-
-async function preCheck(){
-
-  const iban = document.getElementById("iban").value.trim();
-  const name = document.getElementById("name").value.trim();
-  const amount = document.getElementById("amount").value.trim();
-
-  if(!iban || !name || !amount){
-    showResult("Compila tutti i campi","error");
-    return;
+  // -----------------------------
+  // Init settings
+  // -----------------------------
+  function getDefaultBase(){
+    // if hosted on Render together with API -> same origin
+    return window.location.origin;
   }
 
-  try{
-    const res = await fetch(`${RENDER_BASE}/frontend-precheck`,{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ iban,name,amount })
-    });
+  function loadSettings(){
+    const base = localStorage.getItem("IBS_API_BASE") || getDefaultBase();
+    const key  = localStorage.getItem("IBS_API_KEY") || "";
+    document.getElementById("apiBase").value = base;
+    document.getElementById("apiKey").value  = key;
+  }
 
-    const data = await res.json();
+  async function loadConfig(){
+    try{
+      const base = (localStorage.getItem("IBS_API_BASE") || getDefaultBase()).replace(/\/+$/,"");
+      const r = await fetch(base + "/demo-config");
+      if(r.ok){
+        const j = await r.json();
+        feeEur = Number(j.fee_eur ?? 1.99);
+        requireApiKey = !!j.require_api_key;
+      }
+    }catch(e){}
+  }
 
-    if(!res.ok){
-      showResult("Errore API","error");
+  function saveSettings(){
+    const base = (document.getElementById("apiBase").value || "").trim().replace(/\/+$/,"");
+    const key = (document.getElementById("apiKey").value || "").trim();
+    if(base) localStorage.setItem("IBS_API_BASE", base);
+    localStorage.setItem("IBS_API_KEY", key);
+    toast("Impostazioni salvate.", "ok");
+  }
+
+  // -----------------------------
+  // UI helpers
+  // -----------------------------
+  function toast(html, type){
+    const el = document.getElementById("result");
+    el.className = "result " + (type || "mid");
+    el.innerHTML = html;
+  }
+
+  function lockButtons(){
+    document.getElementById("startBtn").disabled = true;
+    document.getElementById("payBtn").disabled = true;
+    document.getElementById("pdfBtn").disabled = true;
+  }
+  function unlockButtons(){
+    document.getElementById("startBtn").disabled = false;
+    document.getElementById("payBtn").disabled = false;
+    document.getElementById("pdfBtn").disabled = false;
+  }
+
+  // -----------------------------
+  // Flow
+  // -----------------------------
+  async function startFlow(){
+    verified = null;
+    pending = null;
+    document.getElementById("pdfBtn").style.display = "none";
+    document.getElementById("payBtn").style.display = "none";
+
+    const iban = (document.getElementById("iban").value || "").trim();
+    const name = (document.getElementById("name").value || "").trim();
+    const amountRaw = document.getElementById("amount").value;
+
+    if(!iban || !name || !amountRaw){
+      toast("❌ Compila IBAN, intestatario e importo.", "bad");
       return;
     }
 
-    lastResponse = data;
+    const amount = Number(amountRaw);
+    if(!Number.isFinite(amount) || amount < 0){
+      toast("❌ Importo non valido.", "bad");
+      return;
+    }
 
-    showResult(
-      `🔒 Verifica disponibile<br>
-       Fee: € ${data.pricing.fee_amount_eur}<br>
-       Completa il pagamento per sbloccare l’esito ufficiale.`,
-      "warning"
+    pending = { iban, name, amount, marketplace_ref:"DEMO", order_id:"" };
+
+    toast(
+      `🔒 <b>Verifica disponibile</b><div class="row">
+        <span class="pill">Fee: € ${feeEur.toFixed(2)}</span>
+        <span class="pill">Esito sbloccato dopo pagamento</span>
+      </div>`,
+      "mid"
     );
 
-    document.getElementById("payBtn").style.display="block";
-
-  }catch(e){
-    showResult("Errore rete o servizio asleep","error");
-  }
-}
-
-function unlock(){
-
-  const match = lastResponse.verification.name_match.match_status;
-  const score = lastResponse.verification.name_match.confidence_score;
-
-  let msg="", cls="";
-
-  if(match==="match"){
-    msg="✅ MATCH confermato";
-    cls="success";
-  }
-  else if(match==="close_match"){
-    msg="⚠ MATCH PARZIALE (verifica consigliata)";
-    cls="warning";
-  }
-  else{
-    msg="❌ NO MATCH";
-    cls="error";
+    document.getElementById("payBtn").style.display = "block";
   }
 
-  showResult(
-    `${msg}<br>
-     Shield Score: ${score}/100`,
-    cls
-  );
+  async function payAndUnlock(){
+    if(!pending){
+      toast("❌ Prima premi “Verifica”.", "bad");
+      return;
+    }
 
-  document.getElementById("payBtn").style.display="none";
-  document.getElementById("pdfBtn").style.display="block";
-}
+    lockButtons();
+    toast("⏳ Pagamento demo in corso…", "mid");
 
-function showResult(html,type){
-  const el=document.getElementById("result");
-  el.innerHTML=html;
-  el.className="result "+type;
-}
+    // pagamento DEMO simulato
+    await new Promise(r => setTimeout(r, 500));
 
-function generatePDF(){
+    // chiamata API (esito dopo pagamento)
+    try{
+      const base = (localStorage.getItem("IBS_API_BASE") || getDefaultBase()).replace(/\/+$/,"");
+      const key  = (localStorage.getItem("IBS_API_KEY") || "").trim();
 
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
+      const url = new URL(base + "/pre-transaction-check");
+      url.searchParams.set("iban", pending.iban);
+      url.searchParams.set("name", pending.name);
+      url.searchParams.set("amount", String(pending.amount));
+      url.searchParams.set("marketplace_ref", pending.marketplace_ref);
+      if(pending.order_id) url.searchParams.set("order_id", pending.order_id);
 
-  doc.setFontSize(18);
-  doc.text("IBAN Shield - Certificato Ufficiale",20,20);
+      const headers = {};
+      if(key) headers["X-API-Key"] = key;
 
-  doc.setFontSize(12);
-  doc.text("Transaction ID: "+lastResponse.transaction_id,20,40);
-  doc.text("IBAN: "+lastResponse.inputs.iban,20,50);
-  doc.text("Intestatario: "+lastResponse.inputs.name,20,60);
-  doc.text("Importo: € "+lastResponse.inputs.amount,20,70);
+      const r = await fetch(url.toString(), { method:"GET", headers });
 
-  doc.text("Match Status: "+lastResponse.verification.name_match.match_status,20,90);
-  doc.text("Confidence Score: "+lastResponse.verification.name_match.confidence_score+"/100",20,100);
+      if(r.status === 401){
+        toast("❌ API Key non valida (401). Incolla la key in “Impostazioni demo (API)”.", "bad");
+        unlockButtons();
+        return;
+      }
 
-  doc.text("Data: "+new Date().toLocaleString(),20,120);
+      if(!r.ok){
+        const txt = await r.text().catch(()=> "");
+        toast("❌ Errore rete o API: " + r.status + " " + (txt ? ("— " + txt.slice(0,120)) : ""), "bad");
+        unlockButtons();
+        return;
+      }
 
-  doc.save("Certificato_IBAN_Shield.pdf");
-}
+      verified = await r.json();
 
+      renderOutcome(verified);
+      document.getElementById("payBtn").style.display = "none";
+      document.getElementById("pdfBtn").style.display = "block";
+      unlockButtons();
+
+    }catch(e){
+      toast("❌ Errore rete o API.", "bad");
+      unlockButtons();
+    }
+  }
+
+  function renderOutcome(data){
+    const ms = (data?.verification?.name_match?.match_status || "unknown").toLowerCase();
+    const score = Number(data?.verification?.shield_score ?? data?.verification?.name_match?.confidence_score ?? 0);
+    const msg = data?.verification?.security_message || "Esito non disponibile";
+
+    let cls = "mid";
+    let title = "⚠ Esito: PARZIALE";
+    if(ms === "match"){ cls="ok"; title="✅ MATCH confermato"; }
+    else if(ms === "no_match"){ cls="bad"; title="❌ NO MATCH"; }
+    else if(ms === "close_match"){ cls="mid"; title="⚠ MATCH PARZIALE"; }
+    else if(ms === "unavailable"){ cls="mid"; title="⚠ Esito non disponibile"; }
+
+    const cert = data?.certificate?.certificate_id || "-";
+    const fee = Number(data?.pricing?.fee_amount_eur ?? feeEur);
+
+    // suggerimento per close_match (UI): scrivilo meglio
+    const suggest = (ms === "close_match")
+      ? `<div style="margin-top:8px;font-weight:800">Suggerimento: controlla accenti/ordine nome-cognome e riprova.</div>`
+      : "";
+
+    toast(
+      `<div style="font-weight:900;font-size:15px">${title}</div>
+       <div style="margin-top:6px">${msg}</div>
+       <div class="score">Shield Score: ${Math.max(0,Math.min(100,Math.round(score)))}/100</div>
+       ${suggest}
+       <div class="row">
+         <span class="pill">Fee: € ${fee.toFixed(2)}</span>
+         <span class="pill">Certificato: ${cert}</span>
+       </div>`,
+      cls
+    );
+  }
+
+  // -----------------------------
+  // PDF helpers
+  // -----------------------------
+  function makeQrDataUrl(text){
+    return new Promise((resolve) => {
+      const holder = document.getElementById("qrTmp");
+      holder.innerHTML = "";
+      new QRCode(holder, { text, width:180, height:180, correctLevel: QRCode.CorrectLevel.M });
+      setTimeout(() => {
+        const img = holder.querySelector("img");
+        if(img && img.src) return resolve(img.src);
+        const canvas = holder.querySelector("canvas");
+        if(canvas) return resolve(canvas.toDataURL("image/png"));
+        resolve(null);
+      }, 50);
+    });
+  }
+
+  function svgLogoToPngDataUrl(sizePx = 96){
+    return new Promise((resolve) => {
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="${sizePx}" height="${sizePx}" viewBox="0 0 64 64">
+          <defs>
+            <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#2563eb"/>
+              <stop offset="1" stop-color="#1e40af"/>
+            </linearGradient>
+            <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#60a5fa" stop-opacity="0.95"/>
+              <stop offset="1" stop-color="#3b82f6" stop-opacity="0.90"/>
+            </linearGradient>
+          </defs>
+          <path d="M32 6 C24 12 16 12 12 12 v18 c0 14 8 23 20 28 c12-5 20-14 20-28 V12 c-4 0-12 0-20-6z" fill="url(#g1)"/>
+          <path d="M32 12 C25 17 18 17 16 17 v13 c0 11 6.5 18 16 22 c9.5-4 16-11 16-22 V17 c-2 0-9 0-16-5z" fill="url(#g2)"/>
+          <path d="M22 32.5 l6 6 l14-16" fill="none" stroke="#22c55e" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M20 18 c6 2 12 1 18-3" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+      `;
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = sizePx; canvas.height = sizePx;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, sizePx, sizePx);
+        resolve(canvas.toDataURL("image/png"));
+      };
+      const blob = new Blob([svg], { type:"image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      img.onerror = () => { try{URL.revokeObjectURL(url);}catch{} resolve(null); };
+      img.onloadend = () => { try{URL.revokeObjectURL(url);}catch{} };
+      img.src = url;
+    });
+  }
+
+  async function downloadPDF(){
+    if(!verified){
+      toast("❌ Prima sblocca l’esito (paga).", "bad");
+      return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:"mm", format:"a4" });
+
+    const txId = verified.transaction_id || "-";
+    const certId = verified?.certificate?.certificate_id || "-";
+    const issuedAt = verified?.certificate?.issued_at || new Date().toISOString();
+    const iban = verified?.inputs?.iban || "";
+    const name = verified?.inputs?.name || "";
+    const amount = verified?.inputs?.amount ?? "";
+    const ms = (verified?.verification?.name_match?.match_status || "unknown").toLowerCase();
+    const score = Math.round(Number(verified?.verification?.shield_score ?? verified?.verification?.name_match?.confidence_score ?? 0));
+    const msg = verified?.verification?.security_message || "";
+    const verifyUrl = verified?.certificate?.verify_url || (window.location.origin + "/verify?tx=" + encodeURIComponent(txId));
+
+    const logoPng = await svgLogoToPngDataUrl(96);
+    const qrDataUrl = await makeQrDataUrl(verifyUrl);
+
+    // Header band
+    doc.setFillColor(15,23,42);
+    doc.rect(0, 0, 210, 34, "F");
+
+    if(logoPng){
+      doc.addImage(logoPng, "PNG", 16, 7, 18, 18);
+    }
+
+    doc.setTextColor(255,255,255);
+    doc.setFont("helvetica","bold");
+    doc.setFontSize(18);
+    doc.text("IBAN Shield — Certificato Ufficiale", 38, 20);
+
+    doc.setFont("helvetica","normal");
+    doc.setFontSize(10);
+    doc.text("IBAN verificato. Bonifico protetto.", 38, 28);
+
+    // Result badge color
+    let badge = {r:254,g:243,b:199, t:"MATCH PARZIALE"};
+    if(ms === "match") badge = {r:209,g:250,b:229, t:"MATCH"};
+    if(ms === "no_match") badge = {r:254,g:226,b:226, t:"NO MATCH"};
+    if(ms === "unavailable") badge = {r:254,g:243,b:199, t:"NON DISPONIBILE"};
+
+    doc.setFillColor(badge.r,badge.g,badge.b);
+    doc.roundedRect(155, 10, 40, 12, 3, 3, "F");
+    doc.setTextColor(15,23,42);
+    doc.setFont("helvetica","bold");
+    doc.setFontSize(10);
+    doc.text(badge.t, 175, 18, {align:"center"});
+
+    // Body
+    doc.setTextColor(0,0,0);
+    doc.setFont("helvetica","bold");
+    doc.setFontSize(15);
+    doc.text("Dati verifica", 18, 54);
+
+    doc.setDrawColor(210);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(18, 60, 174, 64, 4, 4, "S");
+
+    doc.setFontSize(11);
+    doc.text("Transaction ID:", 24, 74);
+    doc.text("Certificato ID:", 24, 84);
+    doc.text("IBAN:", 24, 94);
+    doc.text("Intestatario:", 24, 104);
+    doc.text("Importo:", 24, 114);
+
+    doc.setFont("helvetica","normal");
+    doc.text(String(txId), 70, 74);
+    doc.text(String(certId), 70, 84);
+    doc.text(String(iban), 70, 94);
+    doc.text(String(name), 70, 104);
+    doc.text("€ " + String(amount), 70, 114);
+
+    doc.setFont("helvetica","normal");
+    doc.setTextColor(90);
+    doc.setFontSize(9);
+    doc.text("Verifica valida per questa singola operazione. Controlla lo stato via QR.", 24, 122);
+
+    if(qrDataUrl){
+      doc.setFillColor(255,255,255);
+      doc.setDrawColor(230);
+      doc.roundedRect(160, 72, 26, 26, 3, 3, "FD");
+      doc.addImage(qrDataUrl, "PNG", 162, 74, 22, 22);
+      doc.setFontSize(8);
+      doc.setTextColor(110);
+      doc.text("QR Verifica", 173, 101, {align:"center"});
+    }
+
+    // Score box
+    doc.setFillColor(219,234,254);
+    doc.roundedRect(18, 134, 174, 34, 4, 4, "F");
+
+    doc.setTextColor(0,0,0);
+    doc.setFont("helvetica","bold");
+    doc.setFontSize(13);
+    doc.text("Shield Score: " + Math.max(0,Math.min(100,score)) + "/100", 24, 150);
+
+    doc.setFont("helvetica","normal");
+    doc.setFontSize(11);
+    doc.text("Messaggio: " + msg, 24, 160);
+
+    // Footer
+    doc.setTextColor(120);
+    doc.setFontSize(9);
+    doc.text("Emesso: " + new Date(issuedAt).toLocaleString("it-IT"), 18, 285);
+    doc.text("Documento generato automaticamente da IBAN Shield (demo).", 18, 292);
+
+    doc.save("Certificato_IBAN_Shield.pdf");
+  }
+
+  // init
+  (async function init(){
+    loadSettings();
+    await loadConfig();
+  })();
 </script>
-
 </body>
 </html>
