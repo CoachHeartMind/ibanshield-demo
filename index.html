@@ -1,150 +1,164 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>IBAN Shield</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IBAN Shield - Demo</title>
 
 <style>
-body{
-  font-family: Arial, sans-serif;
-  background:#0f172a;
-  color:white;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
+body {
+    font-family: Arial, sans-serif;
+    background: #f4f6f9;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
 }
-.card{
-  background:white;
-  color:black;
-  padding:30px;
-  border-radius:12px;
-  width:400px;
+
+.container {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    width: 420px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
 }
-input{
-  width:100%;
-  padding:10px;
-  margin-bottom:10px;
+
+h1 {
+    margin-bottom: 5px;
 }
-button{
-  width:100%;
-  padding:12px;
-  background:#2563eb;
-  color:white;
-  border:none;
-  cursor:pointer;
-  font-weight:bold;
+
+.subtitle {
+    color: #666;
+    margin-bottom: 20px;
 }
-.result{
-  margin-top:15px;
-  padding:10px;
-  border-radius:8px;
+
+input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 12px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 14px;
 }
-.success{background:#d1fae5;color:#065f46;}
-.warning{background:#fef3c7;color:#92400e;}
-.error{background:#fee2e2;color:#991b1b;}
+
+button {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(90deg,#2c5eff,#6a8cff);
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+button:hover {
+    opacity: 0.9;
+}
+
+.result {
+    margin-top: 20px;
+    padding: 12px;
+    border-radius: 8px;
+    display: none;
+    font-size: 14px;
+}
+
+.success {
+    background: #e6f7ec;
+    color: #0a7d34;
+}
+
+.error {
+    background: #fde8e8;
+    color: #b42318;
+}
 </style>
 </head>
 
 <body>
 
-<div class="card">
+<div class="container">
+    <h1>IBAN Shield</h1>
+    <div class="subtitle">Verifica tecnica IBAN + intestatario</div>
 
-<h2>IBAN Shield</h2>
-<p>Verifica tecnica IBAN + intestatario</p>
+    <input type="text" id="iban" placeholder="Inserisci IBAN">
+    <input type="text" id="name" placeholder="Intestatario">
+    <input type="number" id="amount" placeholder="Importo (€)">
 
-<input id="iban" placeholder="IBAN">
-<input id="nome" placeholder="Intestatario">
-<input id="importo" type="number" placeholder="Importo €">
+    <button onclick="verifica()">Verifica (1,99€)</button>
 
-<button onclick="verifica()">Verifica (1,99€)</button>
-
-<div id="risultato"></div>
-
+    <div id="result" class="result"></div>
 </div>
 
 <script>
+async function verifica() {
 
-const API_URL = "https://iban-shield.onrender.com/pre-transaction-check";
-const API_KEY = "INSERISCI_LA_TUA_API_KEY";
+    const iban = document.getElementById("iban").value.trim();
+    const name = document.getElementById("name").value.trim();
+    const amount = document.getElementById("amount").value.trim();
 
-async function verifica(){
+    const resultBox = document.getElementById("result");
+    resultBox.style.display = "none";
 
-  const iban = document.getElementById("iban").value.trim();
-  const nome = document.getElementById("nome").value.trim();
-  const importo = document.getElementById("importo").value;
+    if (!iban || !name || !amount) {
+        showError("Compila tutti i campi.");
+        return;
+    }
 
-  const result = document.getElementById("risultato");
-  result.innerHTML = "";
-  result.className = "result";
+    const url = `https://iban-shield.onrender.com/pre-transaction-check?iban=${encodeURIComponent(iban)}&name=${encodeURIComponent(name)}&amount=${encodeURIComponent(amount)}`;
 
-  if(!iban || !nome || !importo){
-    result.innerHTML = "Compila tutti i campi.";
-    result.classList.add("error");
-    return;
-  }
+    try {
+        const response = await fetch(url, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+                "X-API-Key": "ibanshield_super_secret_v1"
+            }
+        });
 
-  try{
-
-    const response = await fetch(
-      `${API_URL}?iban=${encodeURIComponent(iban)}&name=${encodeURIComponent(nome)}&amount=${encodeURIComponent(importo)}`,
-      {
-        method: "GET",
-        headers: {
-          "X-API-Key": API_KEY
+        if (response.status === 401) {
+            showError("API Key non valida.");
+            return;
         }
-      }
-    );
 
-    if(response.status === 401){
-      result.innerHTML = "API Key non valida.";
-      result.classList.add("error");
-      return;
+        const data = await response.json();
+
+        if (!response.ok) {
+            showError(data.error || "Errore durante la verifica.");
+            return;
+        }
+
+        const match = data.verification.name_match.match_status;
+        const securityMessage = data.verification.security_message;
+        const fee = data.pricing.fee_amount_eur;
+        const certId = data.certificate.certificate_id;
+
+        showSuccess(`
+            <strong>Esito:</strong> ${match.toUpperCase()}<br>
+            <strong>Messaggio:</strong> ${securityMessage}<br>
+            <strong>Fee:</strong> € ${fee}<br>
+            <strong>Certificato:</strong> ${certId}
+        `);
+
+    } catch (error) {
+        showError("Errore di connessione al server.");
     }
-
-    if(!response.ok){
-      result.innerHTML = "Errore server.";
-      result.classList.add("error");
-      return;
-    }
-
-    const data = await response.json();
-
-    const matchStatus = data.name_check.match_status;
-    const riskLevel = data.risk_level;
-    const fee = data.guarantee_fee;
-
-    if(matchStatus === "match"){
-      result.innerHTML = `
-        ✔ Verifica completata<br>
-        Livello rischio: ${riskLevel}<br>
-        Commissione: ${fee}€<br>
-        ID Transazione: ${data.transaction_id}
-      `;
-      result.classList.add("success");
-    }
-    else if(matchStatus === "close_match"){
-      result.innerHTML = `
-        ⚠ Attenzione: dati simili<br>
-        Livello rischio: ${riskLevel}
-      `;
-      result.classList.add("warning");
-    }
-    else{
-      result.innerHTML = `
-        ✖ Verifica non superata<br>
-        Livello rischio: ${riskLevel}
-      `;
-      result.classList.add("error");
-    }
-
-  }catch(e){
-    result.innerHTML = "Errore di connessione.";
-    result.classList.add("error");
-  }
 }
 
+function showSuccess(message) {
+    const box = document.getElementById("result");
+    box.className = "result success";
+    box.innerHTML = message;
+    box.style.display = "block";
+}
+
+function showError(message) {
+    const box = document.getElementById("result");
+    box.className = "result error";
+    box.innerHTML = message;
+    box.style.display = "block";
+}
 </script>
 
 </body>
