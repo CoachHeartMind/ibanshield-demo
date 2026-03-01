@@ -5,198 +5,228 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>IBAN Shield</title>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
 <style>
-
-body {
-    margin:0;
-    font-family: 'Segoe UI', sans-serif;
-    background: linear-gradient(135deg, #0f2b6b, #1f4fd8);
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    height:100vh;
+:root{
+  --primary:#2563eb;
+  --primary2:#1e40af;
+  --success:#16a34a;
+  --warning:#f59e0b;
+  --error:#dc2626;
 }
 
-.card {
-    background:white;
-    width:450px;
-    padding:35px;
-    border-radius:18px;
-    box-shadow:0 20px 50px rgba(0,0,0,0.25);
+body{
+  margin:0;
+  font-family: Inter, system-ui;
+  background: linear-gradient(135deg,#0b1220,#111b2f);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
 }
 
-.logo {
-    text-align:center;
-    margin-bottom:15px;
+.card{
+  width:520px;
+  background:white;
+  border-radius:20px;
+  padding:30px;
+  box-shadow:0 30px 70px rgba(0,0,0,.5);
 }
 
-.logo img {
-    height:60px;
+h1{
+  margin:0;
+  font-size:28px;
 }
 
-h1 {
-    text-align:center;
-    margin:5px 0 5px 0;
+input{
+  width:100%;
+  padding:12px;
+  margin-top:12px;
+  border-radius:10px;
+  border:1px solid #ddd;
 }
 
-.subtitle {
-    text-align:center;
-    color:#666;
-    margin-bottom:25px;
+button{
+  width:100%;
+  padding:14px;
+  border:none;
+  border-radius:12px;
+  margin-top:15px;
+  font-weight:bold;
+  cursor:pointer;
 }
 
-input {
-    width:100%;
-    padding:12px;
-    margin-bottom:15px;
-    border-radius:8px;
-    border:1px solid #ddd;
-    font-size:14px;
+.btn-primary{
+  background:linear-gradient(180deg,var(--primary),var(--primary2));
+  color:white;
 }
 
-button {
-    width:100%;
-    padding:14px;
-    border:none;
-    border-radius:10px;
-    background:linear-gradient(90deg,#1f4fd8,#4d79ff);
-    color:white;
-    font-weight:bold;
-    font-size:15px;
-    cursor:pointer;
-    transition:0.2s;
+.btn-pay{
+  background:linear-gradient(180deg,#16a34a,#15803d);
+  color:white;
+  display:none;
 }
 
-button:hover {
-    transform:translateY(-2px);
+.btn-pdf{
+  background:black;
+  color:white;
+  display:none;
 }
 
-.result {
-    margin-top:25px;
-    padding:15px;
-    border-radius:10px;
-    display:none;
-    font-size:14px;
+.result{
+  margin-top:20px;
+  padding:15px;
+  border-radius:12px;
+  font-weight:600;
 }
 
-.match {
-    background:#e6f9f0;
-    border-left:5px solid #00b368;
-    color:#006c3a;
-}
+.success{ background:#dcfce7; color:#065f46; }
+.warning{ background:#fef9c3; color:#92400e; }
+.error{ background:#fee2e2; color:#991b1b; }
 
-.no-match {
-    background:#fde8e8;
-    border-left:5px solid #e11d48;
-    color:#9f1239;
+.score{
+  margin-top:8px;
+  font-size:14px;
 }
-
-.close-match {
-    background:#fff4e5;
-    border-left:5px solid #ff9800;
-    color:#9a6700;
-}
-
-.badge {
-    font-weight:bold;
-    margin-bottom:8px;
-}
-
-.cert {
-    margin-top:10px;
-    font-size:13px;
-    color:#444;
-}
-
 </style>
 </head>
-
 <body>
 
 <div class="card">
+<h1>IBAN Shield</h1>
 
-    <div class="logo">
-        <!-- SOSTITUISCI logo.png con il tuo file -->
-        <img src="logo.png" alt="IBAN Shield Logo">
-    </div>
+<input id="iban" placeholder="IBAN">
+<input id="name" placeholder="Intestatario">
+<input id="amount" type="number" placeholder="Importo €">
 
-    <h1>IBAN Shield</h1>
-    <div class="subtitle">Verifica tecnica IBAN + intestatario</div>
+<button class="btn-primary" onclick="preCheck()">Verifica</button>
 
-    <input type="text" id="iban" placeholder="Inserisci IBAN">
-    <input type="text" id="name" placeholder="Intestatario">
-    <input type="number" id="amount" placeholder="Importo (€)">
+<div id="result"></div>
 
-    <button onclick="verifica()">Continua</button>
-
-    <div id="result" class="result"></div>
+<button id="payBtn" class="btn-pay" onclick="unlock()">💳 Paga & Sblocca</button>
+<button id="pdfBtn" class="btn-pdf" onclick="generatePDF()">📄 Scarica Certificato</button>
 
 </div>
 
 <script>
 
-async function verifica() {
+// ======================
+// CONFIG
+// ======================
+const API_BASE = "https://YOUR_RENDER_URL.onrender.com";
+const API_KEY  = "YOUR_API_KEY";
 
-    const iban = document.getElementById("iban").value.trim();
-    const name = document.getElementById("name").value.trim();
-    const amount = document.getElementById("amount").value.trim();
-    const resultBox = document.getElementById("result");
+let lastResponse = null;
 
-    resultBox.style.display = "none";
+// ======================
+// STEP 1 - PRE CHECK
+// ======================
+async function preCheck(){
 
-    if (!iban || !name || !amount) {
-        showResult("Compila tutti i campi.", "no-match");
-        return;
+  const iban = document.getElementById("iban").value.trim();
+  const name = document.getElementById("name").value.trim();
+  const amount = document.getElementById("amount").value.trim();
+
+  if(!iban || !name || !amount){
+    showResult("Compila tutti i campi","error");
+    return;
+  }
+
+  const url = `${API_BASE}/pre-transaction-check?iban=${encodeURIComponent(iban)}&name=${encodeURIComponent(name)}&amount=${amount}`;
+
+  try{
+    const res = await fetch(url,{
+      headers:{
+        "X-API-Key": API_KEY
+      }
+    });
+
+    if(!res.ok){
+      showResult("Errore connessione API","error");
+      return;
     }
 
-    const url = `https://iban-shield.onrender.com/pre-transaction-check?iban=${encodeURIComponent(iban)}&name=${encodeURIComponent(name)}&amount=${encodeURIComponent(amount)}`;
+    const data = await res.json();
+    lastResponse = data;
 
-    try {
+    showResult(
+      `🔒 Verifica disponibile.<br>Fee: € ${data.pricing.fee_amount_eur}`,
+      "warning"
+    );
 
-        const response = await fetch(url, {
-            method: "GET",
-            headers: {
-                "Content-Type": "application/json",
-                "X-API-Key": "ibanshield_super_secret_v1"
-            }
-        });
+    document.getElementById("payBtn").style.display="block";
 
-        const data = await response.json();
-
-        if (!response.ok) {
-            showResult("Errore durante la verifica.", "no-match");
-            return;
-        }
-
-        const match = data.verification.name_match.match_status;
-        const message = data.verification.security_message;
-        const cert = data.certificate.certificate_id;
-        const fee = data.pricing.fee_amount_eur;
-
-        let cssClass = "match";
-
-        if (match === "no_match") cssClass = "no-match";
-        if (match === "close_match") cssClass = "close-match";
-
-        showResult(`
-            <div class="badge">Esito: ${match.toUpperCase()}</div>
-            ${message}<br><br>
-            Fee applicata: € ${fee}
-            <div class="cert">
-                Certificato: ${cert}
-            </div>
-        `, cssClass);
-
-    } catch (error) {
-        showResult("Errore di connessione al server.", "no-match");
-    }
+  }catch(err){
+    showResult("Errore rete o API","error");
+  }
 }
 
-function showResult(message, type) {
-    const box = document.getElementById("result");
-    box.className = "result " + type;
-    box.innerHTML = message;
-    box.style.display = "block";
+// ======================
+// STEP 2 - UNLOCK
+// ======================
+function unlock(){
+
+  if(!lastResponse){
+    showResult("Esegui prima verifica","error");
+    return;
+  }
+
+  const match = lastResponse.verification.name_match.match_status;
+  const score = lastResponse.verification.name_match.confidence_score;
+
+  let msg="";
+  let cls="";
+
+  if(match==="match"){
+    msg="✅ MATCH confermato";
+    cls="success";
+  }
+  else if(match==="close_match"){
+    msg="⚠ Match parziale. Verifica possibili differenze nel nome.";
+    cls="warning";
+  }
+  else{
+    msg="❌ NO MATCH. Dati non coerenti.";
+    cls="error";
+  }
+
+  showResult(msg+`<div class="score">Shield Score: ${score}/100</div>`,cls);
+
+  document.getElementById("payBtn").style.display="none";
+  document.getElementById("pdfBtn").style.display="block";
+}
+
+// ======================
+// RESULT UI
+// ======================
+function showResult(html,type){
+  const el=document.getElementById("result");
+  el.innerHTML=html;
+  el.className="result "+type;
+}
+
+// ======================
+// PDF GENERATION
+// ======================
+function generatePDF(){
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  doc.setFontSize(18);
+  doc.text("IBAN Shield - Certificato Verifica",20,20);
+
+  doc.setFontSize(12);
+  doc.text("Transaction ID: "+lastResponse.transaction_id,20,40);
+  doc.text("IBAN: "+lastResponse.inputs.iban,20,50);
+  doc.text("Intestatario: "+lastResponse.inputs.name,20,60);
+  doc.text("Importo: € "+lastResponse.inputs.amount,20,70);
+
+  doc.text("Match Status: "+lastResponse.verification.name_match.match_status,20,90);
+  doc.text("Confidence Score: "+lastResponse.verification.name_match.confidence_score+"/100",20,100);
+
+  doc.save("IBAN_Shield_Certificato.pdf");
 }
 
 </script>
