@@ -3,82 +3,123 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>IBAN Shield - Demo</title>
+<title>IBAN Shield</title>
 
 <style>
+
 body {
-    font-family: Arial, sans-serif;
-    background: #f4f6f9;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
+    margin:0;
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #0f2b6b, #1f4fd8);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
 }
 
-.container {
-    background: white;
-    padding: 30px;
-    border-radius: 12px;
-    width: 420px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+.card {
+    background:white;
+    width:450px;
+    padding:35px;
+    border-radius:18px;
+    box-shadow:0 20px 50px rgba(0,0,0,0.25);
+}
+
+.logo {
+    text-align:center;
+    margin-bottom:15px;
+}
+
+.logo img {
+    height:60px;
 }
 
 h1 {
-    margin-bottom: 5px;
+    text-align:center;
+    margin:5px 0 5px 0;
 }
 
 .subtitle {
-    color: #666;
-    margin-bottom: 20px;
+    text-align:center;
+    color:#666;
+    margin-bottom:25px;
 }
 
 input {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 12px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-    font-size: 14px;
+    width:100%;
+    padding:12px;
+    margin-bottom:15px;
+    border-radius:8px;
+    border:1px solid #ddd;
+    font-size:14px;
 }
 
 button {
-    width: 100%;
-    padding: 12px;
-    border: none;
-    border-radius: 8px;
-    background: linear-gradient(90deg,#2c5eff,#6a8cff);
-    color: white;
-    font-weight: bold;
-    cursor: pointer;
+    width:100%;
+    padding:14px;
+    border:none;
+    border-radius:10px;
+    background:linear-gradient(90deg,#1f4fd8,#4d79ff);
+    color:white;
+    font-weight:bold;
+    font-size:15px;
+    cursor:pointer;
+    transition:0.2s;
 }
 
 button:hover {
-    opacity: 0.9;
+    transform:translateY(-2px);
 }
 
 .result {
-    margin-top: 20px;
-    padding: 12px;
-    border-radius: 8px;
-    display: none;
-    font-size: 14px;
+    margin-top:25px;
+    padding:15px;
+    border-radius:10px;
+    display:none;
+    font-size:14px;
 }
 
-.success {
-    background: #e6f7ec;
-    color: #0a7d34;
+.match {
+    background:#e6f9f0;
+    border-left:5px solid #00b368;
+    color:#006c3a;
 }
 
-.error {
-    background: #fde8e8;
-    color: #b42318;
+.no-match {
+    background:#fde8e8;
+    border-left:5px solid #e11d48;
+    color:#9f1239;
 }
+
+.close-match {
+    background:#fff4e5;
+    border-left:5px solid #ff9800;
+    color:#9a6700;
+}
+
+.badge {
+    font-weight:bold;
+    margin-bottom:8px;
+}
+
+.cert {
+    margin-top:10px;
+    font-size:13px;
+    color:#444;
+}
+
 </style>
 </head>
 
 <body>
 
-<div class="container">
+<div class="card">
+
+    <div class="logo">
+        <!-- SOSTITUISCI logo.png con il tuo file -->
+        <img src="logo.png" alt="IBAN Shield Logo">
+    </div>
+
     <h1>IBAN Shield</h1>
     <div class="subtitle">Verifica tecnica IBAN + intestatario</div>
 
@@ -86,29 +127,32 @@ button:hover {
     <input type="text" id="name" placeholder="Intestatario">
     <input type="number" id="amount" placeholder="Importo (€)">
 
-    <button onclick="verifica()">Verifica (1,99€)</button>
+    <button onclick="verifica()">Continua</button>
 
     <div id="result" class="result"></div>
+
 </div>
 
 <script>
+
 async function verifica() {
 
     const iban = document.getElementById("iban").value.trim();
     const name = document.getElementById("name").value.trim();
     const amount = document.getElementById("amount").value.trim();
-
     const resultBox = document.getElementById("result");
+
     resultBox.style.display = "none";
 
     if (!iban || !name || !amount) {
-        showError("Compila tutti i campi.");
+        showResult("Compila tutti i campi.", "no-match");
         return;
     }
 
     const url = `https://iban-shield.onrender.com/pre-transaction-check?iban=${encodeURIComponent(iban)}&name=${encodeURIComponent(name)}&amount=${encodeURIComponent(amount)}`;
 
     try {
+
         const response = await fetch(url, {
             method: "GET",
             headers: {
@@ -117,48 +161,44 @@ async function verifica() {
             }
         });
 
-        if (response.status === 401) {
-            showError("API Key non valida.");
-            return;
-        }
-
         const data = await response.json();
 
         if (!response.ok) {
-            showError(data.error || "Errore durante la verifica.");
+            showResult("Errore durante la verifica.", "no-match");
             return;
         }
 
         const match = data.verification.name_match.match_status;
-        const securityMessage = data.verification.security_message;
+        const message = data.verification.security_message;
+        const cert = data.certificate.certificate_id;
         const fee = data.pricing.fee_amount_eur;
-        const certId = data.certificate.certificate_id;
 
-        showSuccess(`
-            <strong>Esito:</strong> ${match.toUpperCase()}<br>
-            <strong>Messaggio:</strong> ${securityMessage}<br>
-            <strong>Fee:</strong> € ${fee}<br>
-            <strong>Certificato:</strong> ${certId}
-        `);
+        let cssClass = "match";
+
+        if (match === "no_match") cssClass = "no-match";
+        if (match === "close_match") cssClass = "close-match";
+
+        showResult(`
+            <div class="badge">Esito: ${match.toUpperCase()}</div>
+            ${message}<br><br>
+            Fee applicata: € ${fee}
+            <div class="cert">
+                Certificato: ${cert}
+            </div>
+        `, cssClass);
 
     } catch (error) {
-        showError("Errore di connessione al server.");
+        showResult("Errore di connessione al server.", "no-match");
     }
 }
 
-function showSuccess(message) {
+function showResult(message, type) {
     const box = document.getElementById("result");
-    box.className = "result success";
+    box.className = "result " + type;
     box.innerHTML = message;
     box.style.display = "block";
 }
 
-function showError(message) {
-    const box = document.getElementById("result");
-    box.className = "result error";
-    box.innerHTML = message;
-    box.style.display = "block";
-}
 </script>
 
 </body>
